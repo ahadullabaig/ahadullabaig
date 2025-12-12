@@ -29,13 +29,13 @@
 
   <br/>
   
-  <img src="https://skillicons.dev/icons?i=linux,apple,git,bash,supabase,mysql,react,nodejs&theme=dark" alt="Tools" />
+  <img src="https://skillicons.dev/icons?i=linux,git,bash,pytorch,firebase,supabase,mysql,react,nodejs&theme=dark" alt="Tools" />
 </div>
 
 <br/>
 
 <div align="center">
-  <h3>📊 GitHub Analytics</h3>
+  <h3>GitHub Analytics</h3>
   <img src="https://github-readme-stats.vercel.app/api/top-langs/?username=ahadullabaig&layout=compact&theme=transparent&hide_border=true&title_color=ffffff&text_color=9e9e9e&icon_color=ffffff" alt="Top Languages" />
 </div>
 
