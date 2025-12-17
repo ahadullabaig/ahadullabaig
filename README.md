@@ -29,7 +29,7 @@
 
   <br/>
   
-  <img src="https://skillicons.dev/icons?i=linux,git,bash,pytorch,firebase,supabase,mysql,react,nodejs&theme=dark" alt="Tools" />
+  <img src="https://skillicons.dev/icons?i=linux,git,bash,pytorch,mongodb,supabase,mysql,react,nodejs&theme=dark" alt="Tools" />
 </div>
 
 <br/>
