@@ -32,11 +32,10 @@ THEMES = {
 }
 
 STYLE = (
-    ".i,.m,.t,.d{{fill:none;stroke-linecap:round;stroke-linejoin:round}}"
+    ".i,.m,.t{{fill:none;stroke-linecap:round;stroke-linejoin:round}}"
     ".i{{stroke:{ink};stroke-width:2.2}}"
     ".m{{stroke:{muted};stroke-width:1.1}}"
     ".t{{stroke:{ink};stroke-opacity:{trace};stroke-width:1.2}}"
-    ".d{{stroke:{ink};stroke-opacity:{trace};stroke-width:2.8}}"
     ".g{{fill:{ink};fill-opacity:{ghost}}}"
     ".fi{{fill:{ink}}}.fm{{fill:{muted}}}"
 )
@@ -262,27 +261,9 @@ def automata(p, bx, by, bw, bh):
         centered(p, BOOK, ch, tx + k * 16 + 8, by + 16.5, 12, "fi")
 
 
-def ouroboros(p, bx, by, bw, bh):
-    """Snake on its grid, and the dotted BFS path it plans to the food."""
-    step, cols, rows = 20, 18, 10
-    ox = bx + (bw - step * (cols - 1)) / 2
-    oy = by + (bh - step * (rows - 1)) / 2
-
-    def pt(c, r):
-        return ox + c * step, oy + r * step
-
-    p.path("".join(f"M{n(x)} {n(y)}h0" for x, y in (pt(c, r) for c in range(cols) for r in range(rows))), "d")
-    p.line([pt(*c) for c in [(12, 6), (15, 6), (15, 3)]], "m", "stroke-width:1.6;stroke-dasharray:0 5.5")
-    body = [(1, 8), (5, 8), (5, 5), (2, 5), (2, 2), (9, 2), (9, 6), (12, 6)]
-    p.line([pt(*c) for c in body], "i", "stroke-width:9")
-    hx, hy = pt(12, 6)
-    p.circle(hx + 1.5, hy, 6.2, "fi")
-    fx, fy = pt(15, 3)
-    p.circle(fx, fy, 5, "i")
-
-
 def luna(p, bx, by, bw, bh):
-    """Last cycle, this one split at today, the next one predicted."""
+    """Last cycle, this one split at today, the next one predicted.
+    Phases as the app counts them: a 3-day ovulation window centred on day length - 14."""
     R, cy = 52, by + bh / 2
     centres = [bx + R + 6, bx + bw / 2, bx + bw - R - 6]
     cycles, today = [29, 27, 28], 17
@@ -294,7 +275,7 @@ def luna(p, bx, by, bw, bh):
         p.path(f"M{n(x0)} {n(y0)}A{R} {R} 0 {large} 1 {n(x1)} {n(y1)}", cls, style)
 
     for idx, (cx, length) in enumerate(zip(centres, cycles)):
-        phases = [5, length - 21, 2, 14]
+        phases = [5, length - 21, 3, 13]  # menstrual, follicular, ovulation, luteal
         split = [length, today, 0][idx]
         day, gap = 0, math.radians(2.2)
         for span in phases:
@@ -309,73 +290,37 @@ def luna(p, bx, by, bw, bh):
 
 
 def neuroflux(p, bx, by, bw, bh):
-    """ECG with powerline hum (ghost), the cleaned trace (ink), and the spikes between."""
-    rng = random.Random(3)
-    base, period = by + 104, 122
+    """The paper's fidelity ceiling. Output S/N follows input S/N, then levels off where
+    the cascade law 1/R_out = 1/R_in + 1/C puts it. Ghost: perfect fidelity. Ink: the law,
+    with measured runs sitting on it."""
+    lo, hi, ceiling = -15.0, 45.0, 1.92  # input range in dB; MIT-BIH ceiling in dB
+    x0, x1, base = bx + 6, bx + bw, by + bh - 22
+    k = (x1 - x0) / (hi - lo)            # px per dB, the same on both axes
+    X = lambda db: x0 + (db - lo) * k
+    Y = lambda db: base - (db - lo) * k
+    law = lambda r: -10 * math.log10(10 ** (-r / 10) + 10 ** (-ceiling / 10))
 
-    def ecg(t):
-        ph = ((t + 34) % period) / period
-        g = lambda mu, sig, a: a * math.exp(-0.5 * ((ph - mu) / sig) ** 2)
-        return g(.2, .035, 9) - g(.37, .011, 8) + g(.41, .012, 70) - g(.45, .013, 15) + g(.7, .06, 17)
-
-    xs = [bx + t for t in range(0, bw + 1)]
-    noisy = [(x, base - ecg(x - bx) - 7 * math.sin(2 * math.pi * (x - bx) / 6.2) + rng.gauss(0, 1.1)) for x in xs]
-    clean = [(x, base - ecg(x - bx)) for x in xs]
-    p.line(noisy, "t", "stroke-width:1")
-    p.line(clean, "i")
-    ticks = []
-    for row in range(3):
-        y = by + 150 + row * 13
-        for x in xs[::2]:
-            if rng.random() < 0.012 + 0.22 * max(0, ecg(x - bx - 6 * row)) / 70:
-                ticks.append(f"M{n(x)} {n(y)}v7")
-    p.path("".join(ticks), "m", "stroke-width:1.4")
-
-
-def bean(p, bx, by, bw, bh):
-    """Messy notes in, three passes (auditor, ghostwriter, critic), a tidy report out."""
-    rng = random.Random(5)
-    cy = by + bh / 2
-    for k in range(7):
-        y0 = by + 30 + k * 22 + rng.uniform(-3, 3)
-        x0, length = bx + rng.uniform(0, 14), rng.uniform(60, 128)
-        tilt, wob = rng.uniform(-0.06, 0.06), rng.uniform(0, 6)
-        pts = [(x0 + t, y0 + tilt * t + 1.6 * math.sin(t / 7 + wob) + rng.uniform(-0.5, 0.5))
-               for t in range(0, int(length), 4)]
-        p.line(pts, "t", "stroke-width:1.5")
-        if k == 3:
-            x, y = pts[len(pts) // 3]
-            p.line([(x + i * 4, y + (-4 if i % 2 else 4)) for i in range(7)], "t", "stroke-width:1.5")
-    nodes = [bx + 176, bx + 200, bx + 224]
-    p.line([(bx + 150, cy), (nodes[0] - 6, cy)], "m")
-    p.line([(nodes[-1] + 6, cy), (bx + 252, cy)], "m")
-    arrowhead(p, (bx + 252, cy), 0, "m", 5)
-    for i, x in enumerate(nodes):
-        p.circle(x, cy, 6, "m")
-        if i:
-            p.line([(nodes[i - 1] + 6, cy), (x - 6, cy)], "m")
-    rx, rw = bx + 270, bw - 270
-    p.line([(rx, by + 34), (rx + 72, by + 34)], "i", "stroke-width:4.5")
-    for k in range(6):
-        y = by + 62 + k * 17
-        p.line([(rx, y), (rx + (rw * 0.62 if k == 5 else rw), y)], "i", "stroke-width:1.4")
-    p.line([(rx + rw - 22, by + 166), (rx + rw - 14, by + 174), (rx + rw, by + 156)], "i")
+    p.line([(x0, by + 4), (x0, base), (x1, base)], "m")
+    p.line([(X(lo), Y(lo)), (X(lo + (base - by) / k), by)], "t")
+    p.line([(x0, Y(ceiling)), (x1, Y(ceiling))], "m", "stroke-dasharray:2 4")
+    p.line([(X(r / 2), Y(law(r / 2))) for r in range(int(2 * lo), int(2 * hi) + 1)], "i")
+    for r in (-10, -5, 0, 5, 10, 20, 30, 40):
+        p.circle(X(r), Y(law(r)), 2.6, "fi")
+    p.text(ITALIC, "output S/N", x0 + 9, by + 13, 12.5, "fm")
+    p.text(ITALIC, "input S/N", x1 - ITALIC.width("input S/N", 12.5), base + 17, 12.5, "fm")
+    p.text(ITALIC, "ceiling", x1 - ITALIC.width("ceiling", 12.5), Y(ceiling) - 8, 12.5, "fm")
 
 
 PROJECTS = [
-    ("amaze", "Amaze", "https://github.com/ahadullabaig/Amaze",
-     "a recursive backtracker carves a hex maze, then BFS, A* and DFS race through identical copies of it.", amaze),
+    ("neuroflux", "NeuroFlux", "https://github.com/ahadullabaig/NeuroFlux",
+     "spiking networks hit a fidelity ceiling, and a Friis-type cascade law predicts it. our IEEE ICEE 2026 paper.",
+     neuroflux),
+    ("luna", "Luna", "https://github.com/ahadullabaig/Luna",
+     "a period tracker with no internet permission, so your cycle never leaves your phone.", luna),
     ("automata", "Automata-Visualis", "https://github.com/ahadullabaig/Automata-Visualis",
      "build a DFA, then watch a token step through it one input symbol at a time.", automata),
-    ("ouroboros", "ouroboros", "https://github.com/ahadullabaig/ouroboros",
-     "a snake AI in plain C. it chases food with BFS, but only if it can still reach its own tail.", ouroboros),
-    ("luna", "Luna", "https://github.com/ahadullabaig/Luna",
-     "a period tracker with no internet permission. your data has nowhere to go.", luna),
-    ("neuroflux", "NeuroFlux", "https://github.com/ahadullabaig/NeuroFlux",
-     "an experiment in spiking neural networks that strip powerline hum out of ECG, with no labelled data.",
-     neuroflux),
-    ("bean", "Bean", "https://github.com/ahadullabaig/Bean",
-     "turns messy event notes into reports for the IEEE RIT-B student branch, then checks its own facts.", bean),
+    ("amaze", "Amaze", "https://github.com/ahadullabaig/Amaze",
+     "a recursive backtracker carves a hex maze, then BFS, A* and DFS race through identical copies of it.", amaze),
 ]
 
 LEAD = "a few things i've made:"
